@@ -18,8 +18,8 @@ def mat2gray(matrix, amin, amax):
 	return matrix
 
 def imadjust(matrix, perc):
-	'''MATLAB equivalent of imadjust. Enhances the contrast of image by saturating
-	the bottom percent of pixels and top percent pf pixels by rescaling.'''
+	'''MATLAB equivalent of imadjust. Enhances the contrast of an image by saturating
+	the bottom percent of pixels and top percent of pixels by rescaling.'''
 	matrix = matrix.astype('float32')
 	 # rescale an image to [0,1] range if it is in [0,255]
 	if matrix.max() > 1: # if the image is not in 0/1 scale
@@ -35,8 +35,8 @@ def imadjust(matrix, perc):
 		amin = amin + 0.001
 	# rescale everuthing between amin and amax to [0,1] range with amin and amax
 	matrix[(matrix > amin) & (matrix < amax)] = (matrix[(matrix > amin) & (matrix < amax)] - amin) / (amax - amin)
-	#matrix *=255 # this line is not required, it is just my windows 10 image viewer cannot displa 0/1 images
-	contrasted_image = Image.fromarray(matrix)
+	#matrix *=255 # this line is not required, it is just my windows 10 image viewer cannot display 0/1 images 
+	contrasted_image = Image.fromarray(matrix) # converts array to an PIL image type
 	return contrasted_image 
 
 
