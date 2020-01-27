@@ -15,12 +15,29 @@ def mat2gray(matrix, amin, amax):
 	matrix[matrix <= amin] = 0; matrix[matrix >= amax] = 1 
 	# rescale the values that are not 0 and 1 to 0/1 scale
 	matrix[matrix != 1] /= amax
-
-
 	return matrix
 
-def imadjust(matrix):
-	matrix = ((matrix - low_min) / (high_in - low_in)) 
+def imadjust(matrix, perc):
+	'''MATLAB equivalent of imadjust. Enhances the contrast of image by saturating
+	the bottom percent of pixels and top percent pf pixels by rescaling.'''
+	matrix = matrix.astype('float32')
+	 # rescale an image to [0,1] range if it is in [0,255]
+	if matrix.max() > 1: # if the image is not in 0/1 scale
+		matrix /= matrix.max()
+		print('here')
+	amin = matrix.min()
+	amax = matrix.max()
+	# find the value amax when perc% of pixels will be greater than amax
+	while (np.count_nonzero(matrix >= amax)) / (np.shape(matrix)[0]*np.shape(matrix)[1]) <= (perc/100): 
+		amax = amax - 0.001
+	# find the value amin when perc% of pixels will be less than amin
+	while (np.count_nonzero(matrix <= amin)) / (np.shape(matrix)[0]*np.shape(matrix)[1]) <= (perc/100):
+		amin = amin + 0.001
+	# rescale everuthing between amin and amax to [0,1] range with amin and amax
+	matrix[(matrix > amin) & (matrix < amax)] = (matrix[(matrix > amin) & (matrix < amax)] - amin) / (amax - amin)
+	#matrix *=255 # this line is not required, it is just my windows 10 image viewer cannot displa 0/1 images
+	contrasted_image = Image.fromarray(matrix)
+	return contrasted_image 
 
 
 def pairwise(iterable):
@@ -88,8 +105,9 @@ for i in count_tifs:
 		
 		norm1 = norm1 - 0.018; # I don't know why one needs that, but it was in the script
 		norm2 = norm2 - 0.018;
+
 		# enhance the contrast of frames
-		print(np.shape(norm1))
+
 
 
 
