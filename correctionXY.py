@@ -1,11 +1,11 @@
 import os # for work with directories 
 import numpy as np
-from PIL import Image, ImageSequence, ImageEnhance # generally for image processing
+from PIL import Image, ImageSequence # generally for image processing
 import cv2
 from image_proc_func import mat2gray,imadjust, pairwise, Align
 
 
-# Constants and names 
+#_____________________________________________Constants and names________________________________
 Name_dir2 = 'D:\\Lab\\Translocations_HPCA\\Cell3'
 Name_dir_proc = '\\corr'
 Name_seq_t = '\\p'
@@ -14,7 +14,7 @@ amax = 17000
 MaskA = 'Fluorescence 435nm'
 Mask_MasterImg = 'Fluorescence 435nm'
 Nfiles = []
-
+#_________________________________________________________________________________________________
 # r=root, d=directories, f = files
 # for loop gets the name of files in the directory
 for r, d, f in os.walk(Name_dir2):
@@ -30,9 +30,9 @@ for name in Nfiles:
         count_tifs.append(name)
 
 
-# this loop works with a particular .tif file
-imlist1 = [] # for stacking .tif file with frames
-imlist2 = []
+#________________________________________Lopp over .tif files________________________________________
+imlist1 = [] # for stacking .tif file for 435 nm channel
+imlist2 = [] # for stacking .tif file for FRET (505 nm) channel
 ind = 0
 for i in count_tifs: 
     ind +=1 
@@ -54,7 +54,7 @@ for i in count_tifs:
     frame_index = 0
     for frame1, frame2 in pairwise(ImageSequence.Iterator(img_tif)):
         frame_index +=1
-        #_________________imitation of mat2gray from MATLAB_______________________#
+#_________________preparation for alignment of images_______________________
         frame1 = mat2gray(frame1, amin, amax)  # not reliable!
         frame2 = mat2gray(frame2, amin, amax)  # not reliable!
         # prior normalization for better correction
@@ -70,6 +70,7 @@ for i in count_tifs:
         # enhance the contrast of frames
         norm1 = imadjust(norm1, 1)
         norm2 = imadjust(norm2, 1)
+#____________________________Main part of correction___________________________________________
 
         # alignment of images (correction)
         if frame_index == 1:
@@ -81,8 +82,8 @@ for i in count_tifs:
            Transformed_frame = cv2.warpAffine(frame1, WarpMatrix, frame1.shape[::-1], flags=cv2.INTER_LANCZOS4 + cv2.WARP_INVERSE_MAP)
            imlist1.append(Image.fromarray(Transformed_frame))
         imlist2.append(Image.fromarray(frame2))
+#_________________________Saving the .tif files________________________________________________________
 
-	# saving the .tif's
     imlist1[0].save(Name_seq_temp1, save_all=True, append_images=imlist1[1:])
     print(imlist2[0])
     imlist2[0].save(Name_seq_temp2, save_all=True, append_images=imlist2[1:])
