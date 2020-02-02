@@ -2,17 +2,22 @@ import os # for work with directories
 import numpy as np
 from PIL import Image, ImageSequence # generally for image processing
 import cv2
-from image_proc_func import mat2gray,imadjust, pairwise, Align
+from image_proc_func import mat2gray,imadjust, pairwise, Align, BGR_correction, roicolor
 
 
 #_____________________________________________Constants and names________________________________
-Name_dir2 = 'D:\\Lab\\Translocations_HPCA\\Cell3'
+Name_dir2 = 'D:\\Lab\\Translocations_HPCA\\Cell2'
 Name_dir_proc = '\\corr'
 Name_seq_t = '\\p'
 amin = 0
 amax = 17000
 MaskA = 'Fluorescence 435nm'
-Mask_MasterImg = 'Fluorescence 435nm'
+MaskB = 'Fluorescence FRET'
+Name_MasterImg = 'Fluorescence 435nm'
+
+
+g = 0.2
+h = np.ones([3,3])/9 # kernel for filter                                                                           
 Nfiles = []
 #_________________________________________________________________________________________________
 # r=root, d=directories, f = files
@@ -48,24 +53,51 @@ for i in count_tifs:
 
     Name_seq_temp1  = Name_dir2 + Name_dir_proc + '\\' + Name 
     Name_seq_temp2 = Name_dir2 + Name_dir_proc + '\\' + Name505 
+    print(path_to_tif)
     img_tif = Image.open(path_to_tif)
 
     # loops over .png imgs in a .tif file: 2 PNG imgs per loop
+    Img_big_float = np.zeros(np.shape(img_tif))
+#_____________________________________________________________________________________________
+    for frame in ImageSequence.Iterator(img_tif):  # here shoul a vector summation over all frames in a .tif
+        Img_big_float += np.array(mat2gray(frame, amin, amax))
+
+
+#______________________________background correction___________________________________________________________
+
+    
+    bgr = BGR_correction(Img_big_float, d, g, h)
+    lower = bgr + (25/amax)
+    bw = roicolor(Img_big_float, lower, 1)
+
+    if ind == 1:
+        NumCellPixels = np.sum(np.sum(bw))
+    NumCellPixels_new = np.sum(np.sum(bw))
+
+
+    while NumCellPixels_new > NumCellPixels:
+        lower = lower + (0.1 / amax)
+        bw = roicolor(Img_big_float, lower, 1)
+        NumCellPixels_new = np.sum(np.sum(bw)) 
+
+    while NumCellPixels > NumCellPixels_new:
+        lower = lower - (0.1 / amax)
+        bw = roicolor(Img_big_float, lower, 1)
+        NumCellPixels_new = np.sum(np.sum(bw))
+
+    print(NumCellPixels, NumCellPixels_new)   
     frame_index = 0
     for frame1, frame2 in pairwise(ImageSequence.Iterator(img_tif)):
-        frame_index +=1
+        frame_index += 1
 #_________________preparation for alignment of images_______________________
         frame1 = mat2gray(frame1, amin, amax)  # not reliable!
         frame2 = mat2gray(frame2, amin, amax)  # not reliable!
-        # prior normalization for better correction
-        max1 = np.max(np.max(frame1))
-        max2 = np.max(np.max(frame2)) 
 
-        norm1 = frame1 / max1
-        norm2 = frame2 / max2
+        norm1 = frame1 / np.max(np.max(frame1))
+        norm2 = frame2 / np.max(np.max(frame2))
 
-        norm1 = norm1 - 0.018 # I don't know why one needs that, but it was in the script
-        norm2 = norm2 - 0.018
+        norm1 -=  0.018 # I don't know why one needs that, but it was in the script
+        norm2 -=  0.018
 
         # enhance the contrast of frames
         norm1 = imadjust(norm1, 1)
@@ -76,16 +108,19 @@ for i in count_tifs:
         if frame_index == 1:
             WarpMatrix = Align(norm1, norm2)[1] # a geometric transformation matrix
             # applies geom. transformation
-            Transformed_frame = cv2.warpAffine(frame1, WarpMatrix, frame1.shape[::-1], flags=cv2.INTER_LANCZOS4 + cv2.WARP_INVERSE_MAP)
-            imlist1.append(Image.fromarray(Transformed_frame))
+            frame1 = cv2.warpAffine(frame1, WarpMatrix, frame1.shape[::-1], flags=cv2.INTER_LANCZOS4 + cv2.WARP_INVERSE_MAP)
         else:  
-           Transformed_frame = cv2.warpAffine(frame1, WarpMatrix, frame1.shape[::-1], flags=cv2.INTER_LANCZOS4 + cv2.WARP_INVERSE_MAP)
-           imlist1.append(Image.fromarray(Transformed_frame))
+           frame2 = cv2.warpAffine(frame1, WarpMatrix, frame1.shape[::-1], flags=cv2.INTER_LANCZOS4 + cv2.WARP_INVERSE_MAP)
+                # subtraction of background
+        frame1 = frame1 - np.ones(np.shape(frame1)) * bgr / amax 
+        frame2 = frame2 - np.ones(np.shape(frame2)) * bgr / amax 
+        frame1 *= bw # we have values zero everywhere but a soma with dendrites
+        frame2 *= bw
+        imlist1.append(Image.fromarray(frame1))           
         imlist2.append(Image.fromarray(frame2))
-#_________________________Saving the .tif files________________________________________________________
 
+#_________________________Saving the .tif files________________________________________________________
     imlist1[0].save(Name_seq_temp1, save_all=True, append_images=imlist1[1:])
-    print(imlist2[0])
     imlist2[0].save(Name_seq_temp2, save_all=True, append_images=imlist2[1:])
 
 
