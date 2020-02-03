@@ -63,7 +63,7 @@ def pairwise(iterable):
 	a = iter(iterable)
 	return zip(a, a)
 
-def roicolor(img, low, high):
+def roicolor(img, low, high=17000):
 	''' MATLAB euqivalent of roicolor. Set pixels that less than low to 0 and
 	pixels between low and high to 1'''
 	amax = 17000
@@ -73,7 +73,7 @@ def roicolor(img, low, high):
 
 	return img
 
-def BGR_correction(Img_big_float, d, g, h):
+def BGR_correction(Img_big_float, d, g):
     amax = 17000
     [Xval, Yval] = np.shape(Img_big_float)
     T1 = 250 / amax # Online acquisition adds 250 values of intensity to each pixel, so it will become
@@ -84,14 +84,17 @@ def BGR_correction(Img_big_float, d, g, h):
     # we increase the threshold for non-bgr pixel until >=80% of pixels will be in background
     #print(np.sum(np.sum(mask)))
     while S > 1 - g:
-        T1 = T1 + (0.2 / amax)
+        T1 = T1 + 0.2 / amax
         mask = roicolor(Img_big_float, T1, 1)
         S = np.sum(np.sum(mask)) / (Xval * Yval)
        
     # The overall intensity of bgr pixels dived by the number of pixels and after that transformation to 0/1 range
     Sum_bgr_intensity = np.sum(np.sum(Img_big_float * (np.ones(np.shape(mask)) - mask))) 
     Num_bgr_pixels = np.sum(np.sum(np.ones(np.shape(mask))-mask))
-    bgr = Sum_bgr_intensity / (Num_bgr_pixels * amax) # mean normalized intensity
+    bgr = Sum_bgr_intensity / (Num_bgr_pixels  * amax)  # mean normalized intensity
     return bgr
+
+
+
 
    	

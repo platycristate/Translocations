@@ -6,7 +6,7 @@ from image_proc_func import mat2gray,imadjust, pairwise, Align, BGR_correction, 
 
 
 #_____________________________________________Constants and names________________________________
-Name_dir2 = 'D:\\Lab\\Translocations_HPCA\\Cell2'
+Name_dir2 = 'D:\\Lab\\Translocations_HPCA\\Cell31'
 Name_dir_proc = '\\corr'
 Name_seq_t = '\\p'
 amin = 0
@@ -16,8 +16,10 @@ MaskB = 'Fluorescence FRET'
 Name_MasterImg = 'Fluorescence 435nm'
 
 
-g = 0.2
-h = np.ones([3,3])/9 # kernel for filter                                                                           
+g = 0.3
+h = np.ones([3,3])/9 # kernel for filter
+aMask = 0.5
+dXYMask = 80
 Nfiles = []
 #_________________________________________________________________________________________________
 # r=root, d=directories, f = files
@@ -34,12 +36,14 @@ for name in Nfiles:
     if name[-4:] == '.tif' and  name[0:len(MaskA)]:
         count_tifs.append(name)
 
-
+print(count_tifs)
 #________________________________________Lopp over .tif files________________________________________
-imlist1 = [] # for stacking .tif file for 435 nm channel
-imlist2 = [] # for stacking .tif file for FRET (505 nm) channel
+# for stacking .tif file for 435 nm channel
+# for stacking .tif file for FRET (505 nm) channel
 ind = 0
 for i in count_tifs: 
+    imlist1 = [] # for stacking .tif file for 435 nm channel
+    imlist2 = []
     ind +=1 
     Name = i
     Name435 = i[:-4] # Name for a CFP 
@@ -59,37 +63,14 @@ for i in count_tifs:
     # loops over .png imgs in a .tif file: 2 PNG imgs per loop
     Img_big_float = np.zeros(np.shape(img_tif))
 #_____________________________________________________________________________________________
-    for frame in ImageSequence.Iterator(img_tif):  # here shoul a vector summation over all frames in a .tif
+    for frame in ImageSequence.Iterator(img_tif):  # here should be a vector summation over all frames in a .tif
         Img_big_float += np.array(mat2gray(frame, amin, amax))
 
-
-#______________________________background correction___________________________________________________________
-
-    
-    bgr = BGR_correction(Img_big_float, d, g, h)
-    lower = bgr + (25/amax)
-    bw = roicolor(Img_big_float, lower, 1)
-
-    if ind == 1:
-        NumCellPixels = np.sum(np.sum(bw))
-    NumCellPixels_new = np.sum(np.sum(bw))
-
-
-    while NumCellPixels_new > NumCellPixels:
-        lower = lower + (0.1 / amax)
-        bw = roicolor(Img_big_float, lower, 1)
-        NumCellPixels_new = np.sum(np.sum(bw)) 
-
-    while NumCellPixels > NumCellPixels_new:
-        lower = lower - (0.1 / amax)
-        bw = roicolor(Img_big_float, lower, 1)
-        NumCellPixels_new = np.sum(np.sum(bw))
-
-    print(NumCellPixels, NumCellPixels_new)   
     frame_index = 0
     for frame1, frame2 in pairwise(ImageSequence.Iterator(img_tif)):
         frame_index += 1
 #_________________preparation for alignment of images_______________________
+
         frame1 = mat2gray(frame1, amin, amax)  # not reliable!
         frame2 = mat2gray(frame2, amin, amax)  # not reliable!
 
@@ -112,34 +93,12 @@ for i in count_tifs:
         else:  
            frame2 = cv2.warpAffine(frame1, WarpMatrix, frame1.shape[::-1], flags=cv2.INTER_LANCZOS4 + cv2.WARP_INVERSE_MAP)
                 # subtraction of background
-        frame1 = frame1 - np.ones(np.shape(frame1)) * bgr / amax 
-        frame2 = frame2 - np.ones(np.shape(frame2)) * bgr / amax 
-        frame1 *= bw # we have values zero everywhere but a soma with dendrites
-        frame2 *= bw
-        imlist1.append(Image.fromarray(frame1))           
-        imlist2.append(Image.fromarray(frame2))
+        imlist1.append(Image.fromarray(frame1)); imlist2.append(Image.fromarray(frame2))
+
+
+
 
 #_________________________Saving the .tif files________________________________________________________
+
     imlist1[0].save(Name_seq_temp1, save_all=True, append_images=imlist1[1:])
     imlist2[0].save(Name_seq_temp2, save_all=True, append_images=imlist2[1:])
-
-
-
-
-
-
-
-
-
-
-	
-	
-
-
-
-
-
-
-
-
-
