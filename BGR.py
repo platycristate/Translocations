@@ -63,12 +63,8 @@ for i in count_tifs:
     #______________________________background correction___________________________________________________________
 
     bgr = BGR_correction(Img_big_float, d, g)
-#    print("bgr is:", bgr)
     low = (bgr + 2.4)/amax # the value can be adjusted in order to extrac the cell
-#    print("low is:", low)
-#    print("max Img_big_float is:", np.array(Img_big_float).max())
     bw = roicolor(Img_big_float, low, 1)
-#    print(np.sum(np.sum(bw)))
 
 
 
@@ -93,10 +89,56 @@ for i in count_tifs:
     imlist = []
     for frame in ImageSequence.Iterator(img_tif):
         frame_index += 1
-        #frame = mat2gray(frame, amin, amax)  # not reliable!
-#____________________________Main part of correction___________________________________________
-     
         frame = frame - (np.ones(np.shape(frame)) * bgr) 
         frame *= bw # we have values zero everywhere but a soma with dendrites
         imlist.append(Image.fromarray(frame))
+
     imlist[0].save(Name_seq_temp1, save_all=True, append_images=imlist[1:])
+#_____________________________________finding the coordinates of somas__________________________________
+    Img_big_float = (Img_big_float - bgr*np.ones(np.shape(Img_big_float)) * bw
+    if ind == 1:
+        SomaMax = np.max(np.max(Img_big_float))
+        bw_soma = roicolor(Img_big_float, aMask*SomaMax, 1)
+
+        XD = np.sum(bw_soma, 1) # making a vector in X-axis of an image
+
+        X0 = 0 # coordinate from the right
+        while XD[XO] == 0:
+            X0 += 1
+
+        if X0 > dXYMask:
+            X0 -= dXYMask
+        else:
+            X0 = 0
+
+        X1 = Xval # coordinate from the left
+        while XD[Xval] == 0:
+            X1 -= 1
+
+        if X1 < Xval - dXYMask:
+            X1 += dXYMask
+        else:
+            X1 = Xval
+        # the same procedure for the Y-axis of the image
+        YD = np.sum(bw_soma, 0)
+
+        Y0 = 0 # the coordinate from the top
+        while YD[Y0] == 0:
+            Y0 += 1
+
+        if Y0 > dXYMask:
+            Y0 -= dXYMask
+        else:
+            Y0 = 1
+
+        Y1 = Yval # the coordinate from the bottom
+        while YD[Y1] == 0:
+            Y1 -= 1
+
+        if Y1 < Yval - dXYMask:
+            Y1 += dXYMask
+        else:
+            Y1 = Yval
+
+#_______________________________________________fotobleaching compensation_________________________________________
+        
