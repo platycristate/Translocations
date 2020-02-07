@@ -180,14 +180,14 @@ for i in count_tifs:
         # calculating dF for soma (F - F_mean)
         img_d_a = frame - img_main_a
         # Calculating dF/F_mean in selected region for soma
-        SumTranslA[idx,1] = np.sum(np.sum(img_d_a[X0:X1, Y0:Y1] * Soma_bw)) / np.sum(np.sum(img_main_a[X0:X1, Y0:Y1] * Soma_bw))
+        SumTranslA[idx,0] = np.sum(np.sum(img_d_a[X0:X1, Y0:Y1] * Soma_bw)) / np.sum(np.sum(img_main_a[X0:X1, Y0:Y1] * Soma_bw))
     #_____________________Sum translocations dedndrites__________________
-        soma_bw = bw_aa
+        Dendrite_bw = bw_aa
         # extracting dendrite by setting soma coordinates to zero
-        Dendrite_bw = np.zeros(np.shape(bw_aa[X0:X1, Y0:Y1]))
+        Dendrite_bw[X0:X1, Y0:Y1] = np.zeros(np.shape(bw_aa[X0:X1, Y0:Y1]))
         # Calculating dF/F_mean in selected region for dendrites
-        SumTranslA[idx,2] = np.sum(np.sum(img_d_a * Dendrite_bw)) / np.sum(np.sum(img_main_a * Dendrite_bw))
-        
+        SumTranslA[idx,1] = np.sum(np.sum(img_d_a * Dendrite_bw)) / np.sum(np.sum(img_main_a * Dendrite_bw))
+
 
 
 
