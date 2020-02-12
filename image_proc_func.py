@@ -66,13 +66,14 @@ def pairwise(iterable):
 def roicolor(img, low, high):
     ''' MATLAB euqivalent of roicolor. Set pixels that less than low to 0 and
     pixels between low and high to 1'''
+    img1 = img
     amax = 17000
-    if np.max(img) > 1:
-        img = np.array(img)/amax
-    img[img < low] = 0
-    img[(img >= low) & (img <= high)] = 1
+    if np.max(img1) > 1:
+        img1 = np.array(img1)/amax
+    img1[img1 < low] = 0
+    img1[(img1 >= low) & (img1 <= high)] = 1
 
-    return img
+    return img1
 
 def BGR_correction(Img_big_float, d, g):
     amax = 17000

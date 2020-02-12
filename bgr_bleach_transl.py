@@ -1,16 +1,18 @@
 import os # for work with directories 
 import numpy as np
 from PIL import Image, ImageSequence # generally for image processing
-import cv2
 from image_proc_func import mat2gray,imadjust, pairwise, Align, BGR_correction, roicolor
+import pandas as pd
+import cv2
+import matplotlib.pyplot as plt
 
 
 #_____________________________________________Constants and names________________________________
-Name_dir2 = 'D:\\Lab\\Translocations_HPCA\\Cell31\\corr'
+Name_dir2 = 'D:\\Lab\\Translocations_HPCA\\Cell2\\corr'
 Name_dir_proc = '\\bgr'
 Name_seq_t = '\\p'
 amin = 0
-amax = 17000
+amax = 16000
 MaskA = 'Fluorescence 435nm'
 MaskB = 'Fluorescence FRET'
 Name_MasterImg = 'Fluorescence 435nm'
@@ -19,7 +21,7 @@ Name_MasterImg = 'Fluorescence 435nm'
 g = 0.2
 aMask = 0.5
 dXYMask = 80
-dMax = 10
+dMax = 20
 Nfiles = []
 #_________________________________________________________________________________________________
 # for loop that gets names of files in the directory
@@ -27,7 +29,7 @@ for r, d, f in os.walk(Name_dir2):
     for file in f:
         Nfiles.append(file)
 
-#os.mkdir(Name_dir2 + Name_dir_proc) # creates a folder for processed images
+os.mkdir(Name_dir2 + Name_dir_proc) # creates a folder for processed images
 
 # This loop counts .tif files in the directory 
 count_tifs = []
@@ -39,6 +41,8 @@ for name in Nfiles:
 #________________________________________Loop over .tif files________________________________________
 
 ind = 0 # for keeping the no. of a .tif image
+plots = []
+ranges = []
 for i in count_tifs:
     ind += 1 
     Name = i 
@@ -51,7 +55,6 @@ for i in count_tifs:
     path_to_tif = Name_dir2 + '\\' + Name
 
     Name_seq_temp1  = Name_dir2 + Name_dir_proc + '\\' + Name 
-    Name_seq_temp2 = Name_dir2 + Name_dir_proc + '\\' + Name505 
     print(Name)
     img_tif = Image.open(path_to_tif)
 
@@ -66,7 +69,7 @@ for i in count_tifs:
     #______________________________background correction___________________________________________________________
 
     bgr = BGR_correction(Img_big_float, d, g)
-    low = (bgr + 1.5)/amax # the value can be adjusted in order to extrac the cell
+    low = (bgr + 1.7)/amax # the value can be adjusted in order to extrac the cell
     bw = roicolor(Img_big_float, low, 1)
 
     # Adjusting bgr coordinates for each .tif file
@@ -88,14 +91,12 @@ for i in count_tifs:
     Img_big_float = ((Img_big_float - bgr*np.ones(np.shape(Img_big_float)))) * bw;
     if ind == 1: # first .tif file
         SomaMax = np.max(np.max(Img_big_float))
-
         bw_soma = roicolor(Img_big_float, aMask*SomaMax/amax, 1)
-
         [Xval, Yval] = np.shape(Img_big_float)
-
         # find boundaries of soma on X-axis
         XD = np.sum(bw_soma, 1)
         X0 = 0
+
         while XD[X0] == 0:
             X0 += 1
 
@@ -115,9 +116,11 @@ for i in count_tifs:
 
         # find boundaries of soma on Y-axis
         YD = np.sum(bw_soma, 0)
+
         Y0 = 0
         while YD[Y0] == 0:
             Y0 += 1
+
         if Y0 > dXYMask:
             Y0 -= dXYMask
         else:
@@ -144,49 +147,69 @@ for i in count_tifs:
 
         #____________photobleaching compensation_____________________
         if frame_index == 1 and ind == 1:
-            sum0 = np.sum(np.sum(frame)) / np.sum(np.sum(bw)) * (2000/amax) / np.max(frame) # initial intensity, 2000 is the middle of the 
+            sum0 = (np.sum(np.sum(frame)) / np.sum(np.sum(bw)) * (8000/amax)) / np.max(frame) # initial intensity, 2000 is the middle of the 
             # camera range, {mean intensity of the image * mean of the camera range / maximum intensity of the image}?
         sum_new = np.sum(np.sum(frame)) / np.sum(np.sum(bw))
-        frame = frame * sum0/sum_new
+        frame = frame * (sum0/sum_new)
+        if frame_index == 1:
+            img_main_a = np.zeros(np.shape(frame))
+        if frame_index == 1 or frame_index == 2:
+            img_main_a += frame
         imlist.append(Image.fromarray(frame))
         if frame_index == 1:
             reference_img = frame
             Delta = []
         Delta.append(np.sum(np.sum(abs(frame - reference_img)))/np.sum(np.sum(reference_img))) # changes in the total intensity relatively to the first frame in the .tiff
     #____________________________ SumTranslocations____________________
-        if frame_index == 1:
-            img_main_a = np.zeros(np.shape(frame))
-        img_main_a += frame
 
     imlist[0].save(Name_seq_temp1, save_all=True, append_images=imlist[1:])     
-    img_main_a = img_main_a / frame_index # the mean intensity frame over all .tif stack
+    img_main_a = img_main_a / 2 # it will be our baseline fluorescence
     
-    Max, MidxA = max(Delta), Delta.index(max(Delta))
+    MidxA =  Delta.index(max(Delta))
     img_tif.seek(MidxA)
-    img_max_a = img_tif # now it is a single frame after the function PIL.seek()
+    img_max_a = np.array(img_tif) # now it is a single frame after the function PIL.seek()
     img_delta_a = img_max_a - img_main_a
-    bw_a = roicolor(img_delta_a, dMax/amax, 1)
+    print('img_delta_a:', img_delta_a.max())
+    bw_a = roicolor(img_delta_a, 20/amax, 1)
     if ind == 1:
         bw_aa = bw_a
-    frame_index -= 1
     SumTranslA = np.zeros([frame_index, 2])
-    # now we will
-    img_tif_proc = Image.open(Name_seq_temp1)
-    for idx in range(frame_index):
-        img_tif_proc.seek(idx)
-        frame = img_tif_proc
+
+    img = Image.open(Name_seq_temp1)
+    idx = 0
+    Soma_bw = bw_aa[X0:X1,Y0:Y1]
+    for frame in ImageSequence.Iterator(img):
     #_____________________Sum translocations soma______________________
-        Soma_bw = bw_aa[X0:X1,Y0:Y1] # coordinates of soma 
         # calculating dF for soma (F - F_mean)
         img_d_a = frame - img_main_a
         # Calculating dF/F_mean in selected region for soma
-        SumTranslA[idx,0] = np.sum(np.sum(img_d_a[X0:X1, Y0:Y1] * Soma_bw)) / np.sum(np.sum(img_main_a[X0:X1, Y0:Y1] * Soma_bw))
+        SumTranslA[idx,0] = np.sum(np.sum(img_d_a[X0:X1, Y0:Y1] )) / np.sum(np.sum(img_main_a[X0:X1, Y0:Y1]))
+        
     #_____________________Sum translocations dedndrites__________________
         Dendrite_bw = bw_aa
         # extracting dendrite by setting soma coordinates to zero
         Dendrite_bw[X0:X1, Y0:Y1] = np.zeros(np.shape(bw_aa[X0:X1, Y0:Y1]))
         # Calculating dF/F_mean in selected region for dendrites
-        SumTranslA[idx,1] = np.sum(np.sum(img_d_a * Dendrite_bw)) / np.sum(np.sum(img_main_a * Dendrite_bw))
+
+        SumTranslA[idx,1] = np.sum(np.sum(img_d_a*  Dendrite_bw)) / np.sum(np.sum(img_main_a*  Dendrite_bw))
+        idx += 1
+    plots.append(SumTranslA[:,1])
+    plt.plot(range(frame_index), SumTranslA[:,1])
+    plt.show()
+    ranges.append(frame_index)
+
+plt.plot(range(ranges[0]), plots[0])
+plt.plot(range(ranges[6]), plots[6])
+
+
+
+
+
+
+
+
+
+
 
 
 
