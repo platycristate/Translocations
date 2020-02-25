@@ -8,11 +8,12 @@ from skimage.viewer import ImageViewer
 from skimage import data, io
 import os # for work with directories 
 import numpy as np
-
+import pandas as pd
+import re
 #_____________________________________________Constants and names________________________________
 Name_dir = 'D:\\Lab\\Translocations_HPCA\\Cell2\\corr2'
 Name_dir_proc = '\\bgr'
-MaskA = 'Fluorescence 435nm'
+MaskA = 'Fluorescence CFP'
 Nfiles = []
 #_________________________________________________________________________________________________
 # for loop that gets names of files in the directory
@@ -27,7 +28,14 @@ tifs = []
 for name in Nfiles:
     if name[-4:] == '.tif' and  name[0:len(MaskA)]:
         tifs.append(name)
+        
+# a dictionary with maximal values of translocation for 
+# each duration of depolarization
+dFs_FRET = {}
+dFs_CFP = {}
 
+# Regular expression for extracting the duration of depolarization
+pattern = re.compile(r'\d\d\d+') 
 #________________________________________Loop over .tif files________________________________________
 tif_ind = 0 # for keeping the index of a .tif image
 for Name in tifs:
@@ -61,8 +69,8 @@ for Name in tifs:
     for frame in tiff_tensor:
         frame_mask = np.copy(frame)
         frame_mask[frame_mask > 0] = 1
-        if frame_ind == 0:
-            sum0 = frame.sum() / frame_mask.sum() * 8000 / frame.max()
+        if frame_ind == 0 and tif_ind == 0:
+            sum0 = frame.sum() / frame_mask.sum() * 9000 / frame.max()
         sum1 = frame.sum() / frame_mask.sum()
         frame = frame * (sum0/sum1)
         tiff_tensor[frame_ind] = frame
@@ -97,8 +105,34 @@ for Name in tifs:
     plt.plot(range(len(tiff_tensor)-1), transl[:-1,0])
     plt.title(Name)
     plt.show()
-        
-        
+    
+    # filling dictionaries for dose-dependence
+    if tif_ind < 6:
+        duration = int(pattern.findall(Name)[0])
+        dFs_FRET[duration] = max(transl[:-1,0])
+    else:
+        duration = int(pattern.findall(Name)[0])
+        dFs_CFP[duration] = max(transl[:-1,0])        
+    tif_ind += 1 
+
+# Converting dictionaries to corresponding lists
+dFs_FRET = sorted(dFs_FRET.items()) 
+dFs_CFP = sorted(dFs_CFP.items())   
+duration_FRET, dF_FRET = zip(*dFs_FRET)
+duration_CFP, dF_CFP = zip(*dFs_CFP)
+
+# Building dose-dependence graphs
+figure = plt.figure(dpi=100)
+plt.style.use('ggplot')
+plt.plot(duration_FRET, dF_FRET, label='FRET channel')
+plt.plot(duration_CFP, dF_CFP, label='CFP channel')
+plt.xlabel('Duration of depolarization, ms')
+plt.ylabel(r'$\frac{\Delta F}{F}$', rotation=0)
+plt.title('Dose dependence cell 2')
+plt.legend()  
+plt.tight_layout() 
+plt.show()
+plt.savefig('D:\\Lab\\Translocations_HPCA\\Cell2\\Dose_dependence_cell2.pdf')
         
         
                 
