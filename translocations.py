@@ -1,17 +1,14 @@
-import matplotlib
 import matplotlib.pyplot as plt
 from skimage.external import tifffile
-from skimage import filters
-from skimage import measure
 from threshold import cellMask
 from skimage.viewer import ImageViewer
-from skimage import data, io
+from skimage import io
 import os # for work with directories 
 import numpy as np
-import pandas as pd
 import re
 #_____________________________________________Constants and names________________________________
-Name_dir = 'D:\\Lab\\Translocations_HPCA\\Cell2\\corr2'
+Name_cell = 'Cell5'
+Name_dir = 'D:\\Lab\\Translocations_HPCA\\' + Name_cell + '\\corr'
 Name_dir_proc = '\\bgr'
 MaskA = 'Fluorescence CFP'
 Nfiles = []
@@ -38,6 +35,7 @@ dFs_CFP = {}
 pattern = re.compile(r'\d\d\d+') 
 #________________________________________Loop over .tif files________________________________________
 tif_ind = 0 # for keeping the index of a .tif image
+print(tifs)
 for Name in tifs:
     path_to_tif = Name_dir + '\\' + Name   
     path_for_saving = Name_dir + Name_dir_proc + '\\' + Name 
@@ -49,6 +47,7 @@ for Name in tifs:
     # subtract background from every frame
     c = 0
     for c in range(len(tiff_tensor)-1):
+        #tiff_tensor[c] -= 250
         tiff_tensor[c] = cellMask(tiff_tensor[c], thbreshold_method="percent", percent=95)
         c += 1
     
@@ -57,7 +56,7 @@ for Name in tifs:
     #Img_big_float[Img_big_float > 0] = 1
 
     # Creating coordinates mask for soma
-    Soma = cellMask(Img_big_float, thbreshold_method='percent', percent=98)
+    Soma = cellMask(Img_big_float, thbreshold_method='percent', percent=99)
     Soma[Soma > 0] = 1
     
     # Creating coordinates mask for dendrite
@@ -70,7 +69,7 @@ for Name in tifs:
         frame_mask = np.copy(frame)
         frame_mask[frame_mask > 0] = 1
         if frame_ind == 0 and tif_ind == 0:
-            sum0 = frame.sum() / frame_mask.sum() * 9000 / frame.max()
+            sum0 = frame.sum() / frame_mask.sum() * 8500 / frame.max()
         sum1 = frame.sum() / frame_mask.sum()
         frame = frame * (sum0/sum1)
         tiff_tensor[frame_ind] = frame
@@ -128,12 +127,10 @@ plt.plot(duration_FRET, dF_FRET, label='FRET channel')
 plt.plot(duration_CFP, dF_CFP, label='CFP channel')
 plt.xlabel('Duration of depolarization, ms')
 plt.ylabel(r'$\frac{\Delta F}{F}$', rotation=0)
-plt.title('Dose dependence cell 2')
+plt.title('Dose dependence ' + Name_cell)
 plt.legend()  
-plt.tight_layout() 
-plt.show()
-plt.savefig('D:\\Lab\\Translocations_HPCA\\Cell2\\Dose_dependence_cell2.pdf')
-        
+plt.savefig('D:\\Lab\\Translocations_HPCA\\Cell6\\Dose_dependence_'+Name_cell+'.pdf')
+plt.show()     
         
                 
 
